@@ -54,6 +54,57 @@ def save_grades_to_csv(grades_data: dict, output_path: str):
         logging.error(f"保存CSV文件失败: {e}")
         raise
 
+def calculate_gpa(courses: list) -> float:
+    """
+    计算总平均绩点
+    
+    Args:
+        courses: 课程列表
+        
+    Returns:
+        总平均绩点
+    """
+    total_credits = 0.0
+    total_grade_points = 0.0
+    
+    for course in courses:
+        try:
+            # 获取学分
+            credits = course.get('学分')
+            if credits is None or credits == '':
+                continue
+            
+            # 转换学分为浮点数
+            if isinstance(credits, str):
+                credits = float(credits)
+            elif not isinstance(credits, (int, float)):
+                continue
+            
+            # 获取绩点
+            gpa = course.get('绩点')
+            if gpa is None or gpa == '':
+                continue
+            
+            # 转换绩点为浮点数
+            if isinstance(gpa, str):
+                gpa = float(gpa)
+            elif not isinstance(gpa, (int, float)):
+                continue
+            
+            # 累加计算
+            total_credits += credits
+            total_grade_points += credits * gpa
+            
+        except (ValueError, TypeError):
+            # 跳过无法转换的数据
+            continue
+    
+    # 计算平均绩点
+    if total_credits > 0:
+        return round(total_grade_points / total_credits, 2)
+    else:
+        return 0.0
+
 def main():
     """主函数"""
     setup_logging()
@@ -92,19 +143,22 @@ def main():
         
         if grades_result['success']:
             logging.info(f"成绩获取成功: 共{grades_result['course_count']}门课程")
-            if grades_result.get('total_gpa'):
-                logging.info(f"总平均绩点: {grades_result['total_gpa']}")
+            
+            # 计算总平均绩点
+            calculated_gpa = calculate_gpa(grades_result['courses'])
+            logging.info(f"计算得出总平均绩点: {calculated_gpa}")
             
             # 生成输出文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = config.get('output.grades_filename', 'grades.csv')
-            name, ext = os.path.splitext(filename)
-            output_filename = f"{name}_{timestamp}{ext}"
-            output_path = os.path.join(output_dir, output_filename)
+            # name, ext = os.path.splitext(filename)
+            # output_filename = f"{name}_{timestamp}{ext}"
+            output_path = os.path.join(output_dir, filename)
             
             # 保存成绩数据到CSV
             save_grades_to_csv(grades_result, output_path)
             
+           
         else:
             logging.error("获取成绩失败")
             

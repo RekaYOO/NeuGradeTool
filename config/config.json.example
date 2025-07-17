@@ -10,5 +10,15 @@
     "neu_login": {
         "service_url": "http://219.216.96.4/eams/homeExt.action",
         "bypass_proxy": false
+    },
+    "email": {
+        "smtp_server": "smtp.qq.com",
+        "smtp_port": 587,
+        "sender_email": "your_email@qq.com",
+        "sender_password": "your_email_password",
+        "recipient_email": "recipient@example.com"
+    },
+    "auto": {
+        "check_interval": 3600
     }
 }
