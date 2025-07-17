@@ -1,0 +1,14 @@
+{
+    "auth": {
+        "username": "your_username_here",
+        "password": "your_password_here"
+    },
+    "output": {
+        "directory": "output",
+        "grades_filename": "grades.csv"
+    },
+    "neu_login": {
+        "service_url": "http://219.216.96.4/eams/homeExt.action",
+        "bypass_proxy": false
+    }
+}
