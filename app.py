@@ -11,7 +11,7 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('app.log', encoding='utf-8'),
+            logging.FileHandler('./logs/App.log', encoding='utf-8'),
             logging.StreamHandler()
         ]
     )
@@ -149,7 +149,7 @@ def main():
             logging.info(f"计算得出总平均绩点: {calculated_gpa}")
             
             # 生成输出文件名
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = config.get('output.grades_filename', 'grades.csv')
             # name, ext = os.path.splitext(filename)
             # output_filename = f"{name}_{timestamp}{ext}"

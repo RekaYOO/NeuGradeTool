@@ -3,11 +3,26 @@ import csv
 import json
 import time
 import smtplib
+import logging
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from core.neu_login import NEULogin, UnionAuthError, BackendError
 from core.config import Config
+
+def setup_logging():
+    """设置日志"""
+    # 确保logs目录存在
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('logs/Auto.log', encoding='utf-8'),
+        ]
+    )
 
 def ensure_output_directory(output_dir: str):
     """确保输出目录存在"""
@@ -213,6 +228,7 @@ def check_grades():
         neu_login = NEULogin(service_url=service_url, bypass_proxy=bypass_proxy)
         
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始检查成绩...")
+        logging.info("开始检查成绩...")
         
         # 执行认证
         auth_result = neu_login.authenticate(
@@ -228,6 +244,7 @@ def check_grades():
         
         if grades_result['success']:
             current_gpa = calculate_gpa(grades_result['courses'])
+            logging.info(f"成绩获取成功: 共{grades_result['course_count']}门课程, 当前GPA: {current_gpa}")
             
             # 检查是否有变化
             differences = find_grade_differences(previous_data['courses'], grades_result['courses'])
@@ -235,6 +252,7 @@ def check_grades():
             if differences or abs(current_gpa - previous_data['gpa']) > 0.01:
                 print(f"发现成绩更新! 共{len(differences)}项变化")
                 print(f"GPA变化: {previous_data['gpa']} → {current_gpa}")
+                logging.info(f"发现成绩更新! 共{len(differences)}项变化, GPA变化: {previous_data['gpa']} → {current_gpa}")
                 
                 # 保存新的成绩数据
                 save_grades_to_csv(grades_result, output_path)
@@ -243,22 +261,30 @@ def check_grades():
                 send_email(config, differences, previous_data['gpa'], current_gpa)
             else:
                 print("成绩无变化")
+                logging.info("成绩无变化")
         else:
             print("获取成绩失败")
+            logging.error("获取成绩失败")
             
     except UnionAuthError as e:
         print(f"用户名或密码错误: {e}")
+        logging.error(f"用户名或密码错误: {e}")
     except BackendError as e:
         print(f"后端错误: {e}")
+        logging.error(f"后端错误: {e}")
     except Exception as e:
         print(f"检查成绩时出错: {e}")
+        logging.error(f"检查成绩时出错: {e}")
 
 def main():
     """主函数 - 定时检查成绩"""
+    setup_logging()
+    
     config = Config()
     check_interval = config.get('auto.check_interval', 3600)  # 默认1小时检查一次
     
     print(f"成绩自动监控启动，检查间隔: {check_interval}秒")
+    logging.info(f"成绩自动监控启动，检查间隔: {check_interval}秒")
     
     while True:
         try:
@@ -267,9 +293,11 @@ def main():
             time.sleep(check_interval)
         except KeyboardInterrupt:
             print("\n程序已停止")
+            logging.info("程序已停止")
             break
         except Exception as e:
             print(f"程序异常: {e}")
+            logging.error(f"程序异常: {e}")
             time.sleep(60)  # 出错后等待1分钟再重试
 
 if __name__ == "__main__":
