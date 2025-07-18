@@ -16,7 +16,7 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/App.log', encoding='utf-8'),
+            logging.FileHandler('logs/Grade.log', encoding='utf-8'),
         ]
     )
 
@@ -123,7 +123,7 @@ def main():
         ensure_output_directory(output_dir)
         
         # 创建登录对象
-        service_url = config.get('neu_login.service_url')
+        service_url = config.get('service_data.JiaoWuURL')
         bypass_proxy = config.get('neu_login.bypass_proxy', False)
         neu_login = NEULogin(service_url=service_url, bypass_proxy=bypass_proxy)
         

@@ -21,7 +21,7 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/Auto.log', encoding='utf-8'),
+            logging.FileHandler('logs/AutoGrade.log', encoding='utf-8'),
         ]
     )
 
@@ -268,7 +268,7 @@ def check_grades():
         previous_data = load_previous_grades(output_path)
         
         # 创建登录对象
-        service_url = config.get('neu_login.service_url')
+        service_url = config.get('service_data.JiaoWuURL')
         bypass_proxy = config.get('neu_login.bypass_proxy', False)
         neu_login = NEULogin(service_url=service_url, bypass_proxy=bypass_proxy)
         

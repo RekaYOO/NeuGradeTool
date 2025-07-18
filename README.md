@@ -81,7 +81,7 @@ cp config/config.json.example config/config.json
 
 ## 使用方法
 
-### 一次性查询 (app.py)
+### 一次性查询成绩 (Grade.py)
 
 获取当前所有成绩并保存到CSV文件：
 
@@ -95,7 +95,7 @@ python app.py
 - 保存成绩到 `output/grades.csv`
 - 显示详细的成绩信息和日志
 
-### 自动监控 (Auto.py)
+### 自动监控成绩 (AutoGrade.py)
 
 后台持续监控成绩变化：
 
@@ -121,6 +121,14 @@ nohup python3 Auto.py > Auto.out 2>&1 &
 - 新增课程详情
 - 成绩更新详情
 
+### 获取培养计划 (Plan.py)
+
+获取培养计划并保存到CSV文件：
+
+```bash
+python Plan.py
+```
+
 ## 依赖库说明
 
 | 库名 | 版本要求 | 用途 |
@@ -132,8 +140,10 @@ nohup python3 Auto.py > Auto.out 2>&1 &
 ## 输出文件
 
 - `output/grades.csv` - 最新成绩数据（Auto.py使用）
-- `logs/App.log` - App.py运行日志
-- `logs/Auto.log` - Auto.py监控日志
+- `output/plan.csv` - 培养计划数据
+- `logs/Grade.log` - Grade.py运行日志
+- `logs/AutoGrade.log` - AutoGrade.py监控日志
+- `logs/Plan.log` -Plan.py日志
 
 ## 注意事项
 

@@ -60,6 +60,8 @@ class Config:
         
         Returns:
             包含用户名和密码的字典
+
+        预留为了增加安全防护的修改。
         """
         username = self.get('auth.username')
         password = self.get('auth.password')

@@ -31,7 +31,7 @@ class NEULogin:
         初始化NEU登录
         
         Args:
-            service_url: 目标服务URL
+            service_url: 基础URL
             bypass_proxy: 是否跳过系统代理
         """
         self.service_url = service_url

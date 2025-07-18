@@ -36,7 +36,7 @@ class NEUGradeService:
                 "Accept": "*/*",
                 "X-Requested-With": "XMLHttpRequest",
                 "Origin": "http://219.216.96.4",
-                "Referer": "http://219.216.96.4/eams/teach/grade/course/person!search.action?semesterId=111&projectType=",
+                "Referer": "http://219.216.96.4/eams/teach/grade/course/person!search.action?semesterId=110&projectType=",
                 "Content-Length": "0"
             }
             

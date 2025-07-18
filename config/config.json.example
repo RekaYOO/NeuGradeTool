@@ -1,7 +1,7 @@
 {
     "auth": {
-        "username": "your_username_here",
-        "password": "your_password_here"
+        "username": "学号",
+        "password": "密码"
     },
     "output": {
         "directory": "output",
@@ -11,24 +11,27 @@
         "service_url": "http://219.216.96.4/eams/homeExt.action",
         "bypass_proxy": false
     },
+    "service_data": {
+        "JiaoWuURL": "http://219.216.96.4/eams/homeExt.action",
+        "plan_id": "4068"
+    },
     "email": {
         "smtp_server": "smtp.qq.com",
         "smtp_port": 587,
-        "sender_email": "your_email@qq.com",
-        "sender_password": "your_email_password",
-        "recipient_email": "recipient@example.com"
+        "sender_email": "@qq.com",
+        "sender_password": "pwd",
+        "recipient_email": "@"
     },
     "auto": {
         "frequent_period": {
             "start_time": "08:00",
-            "end_time": "22:00",
-            "interval": 1800
+            "end_time": "21:00",
+            "interval": 1200
         },
         "cold_period": {
-            "start_time": "22:00",
+            "start_time": "21:00",
             "end_time": "08:00",
-            "interval": 7200
+            "interval": 10800
         }
     }
 }
-
