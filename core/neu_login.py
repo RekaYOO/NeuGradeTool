@@ -38,7 +38,7 @@ class NEULogin:
         初始化NEU登录
         
         Args:
-            service_url: 目标服务URL，如果不提供则使用默认的ipgw服务
+            service_url: 目标服务URL
             bypass_proxy: 是否跳过系统代理
         """
         self.service_url = service_url or "http://219.216.96.4/eams/homeExt.action"

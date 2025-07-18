@@ -100,7 +100,13 @@ python app.py
 后台持续监控成绩变化：
 
 ```bash
-python Auto.py
+pythow Auto.py
+```
+
+或
+
+```bash
+nohup python3 Auto.py > Auto.log 2>&1 &
 ```
 
 **功能说明：**
