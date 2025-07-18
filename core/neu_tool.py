@@ -23,8 +23,8 @@ class BackendError(NEULoginError):
         super().__init__("后端服务异常")
 
 
-class NEULogin:
-    """东北大学统一身份认证登录类"""
+class NEUTool:
+    """工具包"""
     
     def __init__(self, service_url: Optional[str] = None, bypass_proxy: bool = False):
         """

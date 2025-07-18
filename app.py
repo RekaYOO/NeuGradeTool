@@ -2,7 +2,7 @@ import os
 import csv
 import logging
 from datetime import datetime
-from core.neu_login import NEULogin, UnionAuthError, BackendError
+from core.neu_tool import NEUTool, UnionAuthError, BackendError
 from core.config import Config
 
 def setup_logging():
@@ -124,7 +124,7 @@ def main():
         # 创建登录对象
         service_url = config.get('neu_login.service_url')
         bypass_proxy = config.get('neu_login.bypass_proxy', False)
-        neu_login = NEULogin(service_url=service_url, bypass_proxy=bypass_proxy)
+        neu_login = NEUTool(service_url=service_url, bypass_proxy=bypass_proxy)
         
         logging.info("开始登录认证...")
         

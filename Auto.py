@@ -4,10 +4,10 @@ import json
 import time
 import smtplib
 import logging
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from core.neu_login import NEULogin, UnionAuthError, BackendError
+from core.neu_tool import NEUTool, UnionAuthError, BackendError
 from core.config import Config
 
 def setup_logging():
@@ -262,7 +262,7 @@ def check_grades():
         # 创建登录对象
         service_url = config.get('neu_login.service_url')
         bypass_proxy = config.get('neu_login.bypass_proxy', False)
-        neu_login = NEULogin(service_url=service_url, bypass_proxy=bypass_proxy)
+        neu_login = NEUTool(service_url=service_url, bypass_proxy=bypass_proxy)
         
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始检查成绩...")
         logging.info("开始检查成绩...")
@@ -334,8 +334,8 @@ def main():
         
         print(f"频繁查询时段: {frequent_start} - {frequent_end}, 间隔: {frequent_interval}秒")
         print(f"冷查询时段: {cold_start} - {cold_end}, 间隔: {cold_interval}秒")
-        # logging.info(f"频繁查询时段: {frequent_start} - {frequent_end}, 间隔: {frequent_interval}秒")
-        # logging.info(f"冷查询时段: {cold_start} - {cold_end}, 间隔: {cold_interval}秒")
+        logging.info(f"频繁查询时段: {frequent_start} - {frequent_end}, 间隔: {frequent_interval}秒")
+        logging.info(f"冷查询时段: {cold_start} - {cold_end}, 间隔: {cold_interval}秒")
         
     except Exception as e:
         print(f"配置解析错误: {e}")
@@ -352,12 +352,14 @@ def main():
             # 执行成绩检查
             check_grades()
             
-            # 计算下次检查时间
+            # 计算下次检查时间 - 修复时间计算问题
             next_check_time = datetime.now()
-            next_check_time = next_check_time.replace(second=0, microsecond=0)
-            next_check_time = next_check_time.replace(minute=next_check_time.minute + current_interval // 60)
+            # 添加间隔时间（秒）
+            next_check_time = next_check_time + timedelta(seconds=current_interval)
+            # 格式化显示，去掉秒和微秒
+            next_check_display = next_check_time.replace(second=0, microsecond=0)
             
-            print(f"下次检查时间: {next_check_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"下次检查时间: {next_check_display.strftime('%Y-%m-%d %H:%M:%S')}")
             
             time.sleep(current_interval)
             
@@ -372,4 +374,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
 

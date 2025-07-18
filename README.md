@@ -106,7 +106,7 @@ pythow Auto.py
 或
 
 ```bash
-nohup python3 Auto.py > Auto.log 2>&1 &
+nohup python3 Auto.py > Auto.out 2>&1 &
 ```
 
 **功能说明：**
