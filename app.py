@@ -2,7 +2,8 @@ import os
 import csv
 import logging
 from datetime import datetime
-from core.neu_tool import NEUTool, UnionAuthError, BackendError
+from core.neu_login import NEULogin, UnionAuthError, BackendError
+from core.neu_get_grade import NEUGradeService
 from core.config import Config
 
 def setup_logging():
@@ -124,7 +125,7 @@ def main():
         # 创建登录对象
         service_url = config.get('neu_login.service_url')
         bypass_proxy = config.get('neu_login.bypass_proxy', False)
-        neu_login = NEUTool(service_url=service_url, bypass_proxy=bypass_proxy)
+        neu_login = NEULogin(service_url=service_url, bypass_proxy=bypass_proxy)
         
         logging.info("开始登录认证...")
         
@@ -140,9 +141,12 @@ def main():
         service_result = neu_login.access_service()
         logging.info(f"访问教务系统成功: {service_result['url']}")
         
+        # 创建成绩服务对象
+        grade_service = NEUGradeService(neu_login.get_session())
+        
         # 获取成绩信息
         logging.info("获取成绩信息...")
-        grades_result = neu_login.get_grades()
+        grades_result = grade_service.get_grades()
         
         if grades_result['success']:
             logging.info(f"成绩获取成功: 共{grades_result['course_count']}门课程")
@@ -152,16 +156,12 @@ def main():
             logging.info(f"计算得出总平均绩点: {calculated_gpa}")
             
             # 生成输出文件名
-            # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = config.get('output.grades_filename', 'grades.csv')
-            # name, ext = os.path.splitext(filename)
-            # output_filename = f"{name}_{timestamp}{ext}"
             output_path = os.path.join(output_dir, filename)
             
             # 保存成绩数据到CSV
             save_grades_to_csv(grades_result, output_path)
             
-           
         else:
             logging.error("获取成绩失败")
             

@@ -7,7 +7,8 @@ import logging
 from datetime import datetime, time as dt_time, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from core.neu_tool import NEUTool, UnionAuthError, BackendError
+from core.neu_login import NEULogin, UnionAuthError, BackendError
+from core.neu_get_grade import NEUGradeService
 from core.config import Config
 
 def setup_logging():
@@ -30,38 +31,53 @@ def ensure_output_directory(output_dir: str):
         os.makedirs(output_dir)
 
 def calculate_gpa(courses: list) -> float:
-    """计算总平均绩点"""
+    """
+    计算总平均绩点
+    
+    Args:
+        courses: 课程列表
+        
+    Returns:
+        总平均绩点
+    """
     total_credits = 0.0
     total_grade_points = 0.0
     
     for course in courses:
         try:
+            # 获取学分
             credits = course.get('学分')
             if credits is None or credits == '':
                 continue
             
+            # 转换学分为浮点数
             if isinstance(credits, str):
                 credits = float(credits)
             elif not isinstance(credits, (int, float)):
                 continue
             
+            # 获取绩点
             gpa = course.get('绩点')
             if gpa is None or gpa == '':
                 continue
             
+            # 转换绩点为浮点数
             if isinstance(gpa, str):
                 gpa = float(gpa)
             elif not isinstance(gpa, (int, float)):
                 continue
             
+            # 累加计算
             total_credits += credits
             total_grade_points += credits * gpa
             
         except (ValueError, TypeError):
+            # 跳过无法转换的数据
             continue
     
+    # 计算平均绩点
     if total_credits > 0:
-        return round(total_grade_points / total_credits, 4)
+        return round(total_grade_points / total_credits, 2)
     else:
         return 0.0
 
@@ -74,23 +90,32 @@ def load_previous_grades(file_path: str) -> dict:
         courses = []
         with open(file_path, 'r', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile)
-            courses = list(reader)
+            for row in reader:
+                # 转换数值字段
+                for field in ['学分', '绩点']:
+                    if field in row and row[field]:
+                        try:
+                            row[field] = float(row[field])
+                        except ValueError:
+                            pass
+                courses.append(row)
         
-        # 计算之前的GPA
-        previous_gpa = calculate_gpa(courses)
-        
-        return {"courses": courses, "gpa": previous_gpa}
-    except Exception:
+        gpa = calculate_gpa(courses)
+        return {"courses": courses, "gpa": gpa}
+    except Exception as e:
+        print(f"加载之前成绩数据失败: {e}")
         return {"courses": [], "gpa": 0.0}
 
 def save_grades_to_csv(grades_data: dict, output_path: str):
-    """保存成绩数据到CSV文件"""
+    """将成绩数据保存为CSV文件"""
     if not grades_data.get('courses'):
+        print("没有成绩数据可保存")
         return
     
     courses = grades_data['courses']
     headers = grades_data.get('headers', [])
     
+    # 如果没有表头，从第一条记录中获取
     if not headers and courses:
         headers = list(courses[0].keys())
     
@@ -99,46 +124,47 @@ def save_grades_to_csv(grades_data: dict, output_path: str):
             writer = csv.DictWriter(csvfile, fieldnames=headers)
             writer.writeheader()
             writer.writerows(courses)
+        
+        print(f"成绩数据已保存到: {output_path}")
+        
     except Exception as e:
         print(f"保存CSV文件失败: {e}")
+        raise
 
 def find_grade_differences(old_courses: list, new_courses: list) -> list:
-    """找出成绩差异"""
-    old_dict = {course.get('课程名称', ''): course for course in old_courses}
-    new_dict = {course.get('课程名称', ''): course for course in new_courses}
-    
+    """查找成绩变化"""
     differences = []
     
-    # 检查新增课程
-    for course_name, course_data in new_dict.items():
-        if course_name not in old_dict:
-            differences.append({
-                'type': '新增课程',
-                'course_name': course_name,
-                'data': course_data
-            })
+    # 创建旧成绩的索引
+    old_courses_dict = {}
+    for course in old_courses:
+        key = f"{course.get('课程名称', '')}-{course.get('学年学期', '')}"
+        old_courses_dict[key] = course
     
-    # 检查成绩变化
-    for course_name, new_course in new_dict.items():
-        if course_name in old_dict:
-            old_course = old_dict[course_name]
-            
-            # 检查关键字段是否有变化
-            key_fields = ['总评成绩', '最终', '绩点', '学分']
-            for field in key_fields:
-                old_value = old_course.get(field, '')
-                new_value = new_course.get(field, '')
-                
-                if str(old_value) != str(new_value):
-                    differences.append({
-                        'type': '成绩更新',
-                        'course_name': course_name,
-                        'field': field,
-                        'old_value': old_value,
-                        'new_value': new_value,
-                        'data': new_course
-                    })
-                    break
+    # 检查新成绩
+    for new_course in new_courses:
+        key = f"{new_course.get('课程名称', '')}-{new_course.get('学年学期', '')}"
+        
+        if key not in old_courses_dict:
+            # 新增课程
+            differences.append({
+                "type": "新增课程",
+                "course_name": new_course.get('课程名称', '未知'),
+                "data": new_course
+            })
+        else:
+            # 检查成绩是否有变化
+            old_course = old_courses_dict[key]
+            for field in ['最终', '总评成绩', '绩点']:
+                if field in new_course and field in old_course:
+                    if str(new_course[field]) != str(old_course[field]):
+                        differences.append({
+                            "type": "成绩更新",
+                            "course_name": new_course.get('课程名称', '未知'),
+                            "field": field,
+                            "old_value": old_course[field],
+                            "new_value": new_course[field]
+                        })
     
     return differences
 
@@ -166,12 +192,8 @@ def send_email(config: Config, differences: list, old_gpa: float, new_gpa: float
         body = f"""
 成绩更新通知
 
-更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-平均绩点变化:
-- 之前: {old_gpa}
-- 现在: {new_gpa}
-- 变化: {'+' if new_gpa > old_gpa else ''}{round(new_gpa - old_gpa, 4)}
+平均绩点变化: {old_gpa} → {new_gpa}
+变化数量: {len(differences)} 项
 
 详细变化:
 """
@@ -204,42 +226,28 @@ def send_email(config: Config, differences: list, old_gpa: float, new_gpa: float
     except Exception as e:
         print(f"发送邮件失败: {e}")
 
-def parse_time_string(time_str: str) -> dt_time:
-    """解析时间字符串为time对象"""
-    try:
-        hour, minute = map(int, time_str.split(':'))
-        return dt_time(hour, minute)
-    except ValueError:
-        raise ValueError(f"时间格式错误: {time_str}，应为 HH:MM 格式")
-
-def is_in_time_range(current_time: dt_time, start_time: dt_time, end_time: dt_time) -> bool:
-    """判断当前时间是否在指定时间范围内"""
-    if start_time <= end_time:
-        # 同一天内的时间范围，如 08:00 - 22:00
-        return start_time <= current_time <= end_time
-    else:
-        # 跨天的时间范围，如 22:00 - 08:00
-        return current_time >= start_time or current_time <= end_time
-
 def get_current_check_interval(config: Config) -> tuple:
-    """获取当前时段的检查间隔和时段名称"""
-    current_time = datetime.now().time()
-    
-    # 获取频繁查询时段配置
-    frequent_start = parse_time_string(config.get('auto.frequent_period.start_time', '08:00'))
-    frequent_end = parse_time_string(config.get('auto.frequent_period.end_time', '22:00'))
-    frequent_interval = config.get('auto.frequent_period.interval', 1800)  # 默认30分钟
-    
-    # 获取冷查询时段配置
-    cold_start = parse_time_string(config.get('auto.cold_period.start_time', '22:00'))
-    cold_end = parse_time_string(config.get('auto.cold_period.end_time', '08:00'))
-    cold_interval = config.get('auto.cold_period.interval', 7200)  # 默认2小时
-    
-    # 判断当前时间属于哪个时段
-    if is_in_time_range(current_time, frequent_start, frequent_end):
-        return frequent_interval, "频繁查询时段"
-    else:
-        return cold_interval, "冷查询时段"
+    """获取当前时段的检查间隔"""
+    try:
+        frequent_start = config.get('auto.frequent_period.start_time', '08:00')
+        frequent_end = config.get('auto.frequent_period.end_time', '22:00')
+        frequent_interval = config.get('auto.frequent_period.interval', 1800)
+        cold_interval = config.get('auto.cold_period.interval', 7200)
+        
+        # 解析时间
+        frequent_start_time = datetime.strptime(frequent_start, '%H:%M').time()
+        frequent_end_time = datetime.strptime(frequent_end, '%H:%M').time()
+        current_time = datetime.now().time()
+        
+        # 判断当前时间是否在频繁查询时段
+        if frequent_start_time <= current_time <= frequent_end_time:
+            return frequent_interval, "频繁查询时段"
+        else:
+            return cold_interval, "冷查询时段"
+            
+    except Exception as e:
+        print(f"解析时间配置失败: {e}")
+        return 1800, "默认时段"
 
 def check_grades():
     """检查成绩更新"""
@@ -262,7 +270,7 @@ def check_grades():
         # 创建登录对象
         service_url = config.get('neu_login.service_url')
         bypass_proxy = config.get('neu_login.bypass_proxy', False)
-        neu_login = NEUTool(service_url=service_url, bypass_proxy=bypass_proxy)
+        neu_login = NEULogin(service_url=service_url, bypass_proxy=bypass_proxy)
         
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始检查成绩...")
         logging.info("开始检查成绩...")
@@ -273,11 +281,15 @@ def check_grades():
             credentials['password']
         )
         logging.info("认证成功")
+        
         # 访问教务系统
         service_result = neu_login.access_service()
         
+        # 创建成绩服务对象
+        grade_service = NEUGradeService(neu_login.get_session())
+        
         # 获取成绩信息
-        grades_result = neu_login.get_grades()
+        grades_result = grade_service.get_grades()
         
         if grades_result['success']:
             current_gpa = calculate_gpa(grades_result['courses'])
@@ -322,20 +334,10 @@ def main():
     print("成绩自动监控启动")
     logging.info("成绩自动监控启动")
     
-    # 显示时段配置信息
     try:
-        frequent_start = config.get('auto.frequent_period.start_time', '08:00')
-        frequent_end = config.get('auto.frequent_period.end_time', '22:00')
-        frequent_interval = config.get('auto.frequent_period.interval', 1800)
-        
-        cold_start = config.get('auto.cold_period.start_time', '22:00')
-        cold_end = config.get('auto.cold_period.end_time', '08:00')
-        cold_interval = config.get('auto.cold_period.interval', 7200)
-        
-        print(f"频繁查询时段: {frequent_start} - {frequent_end}, 间隔: {frequent_interval}秒")
-        print(f"冷查询时段: {cold_start} - {cold_end}, 间隔: {cold_interval}秒")
-        logging.info(f"频繁查询时段: {frequent_start} - {frequent_end}, 间隔: {frequent_interval}秒")
-        logging.info(f"冷查询时段: {cold_start} - {cold_end}, 间隔: {cold_interval}秒")
+        # 验证配置
+        config.get_credentials()
+        get_current_check_interval(config)
         
     except Exception as e:
         print(f"配置解析错误: {e}")
@@ -352,11 +354,8 @@ def main():
             # 执行成绩检查
             check_grades()
             
-            # 计算下次检查时间 - 修复时间计算问题
-            next_check_time = datetime.now()
-            # 添加间隔时间（秒）
-            next_check_time = next_check_time + timedelta(seconds=current_interval)
-            # 格式化显示，去掉秒和微秒
+            # 计算下次检查时间
+            next_check_time = datetime.now() + timedelta(seconds=current_interval)
             next_check_display = next_check_time.replace(second=0, microsecond=0)
             
             print(f"下次检查时间: {next_check_display.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -374,6 +373,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
