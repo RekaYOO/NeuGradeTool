@@ -4,7 +4,7 @@ import json
 import time
 import smtplib
 import logging
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from core.neu_login import NEULogin, UnionAuthError, BackendError
@@ -61,7 +61,7 @@ def calculate_gpa(courses: list) -> float:
             continue
     
     if total_credits > 0:
-        return round(total_grade_points / total_credits, 2)
+        return round(total_grade_points / total_credits, 4)
     else:
         return 0.0
 
@@ -171,7 +171,7 @@ def send_email(config: Config, differences: list, old_gpa: float, new_gpa: float
 平均绩点变化:
 - 之前: {old_gpa}
 - 现在: {new_gpa}
-- 变化: {'+' if new_gpa > old_gpa else ''}{round(new_gpa - old_gpa, 2)}
+- 变化: {'+' if new_gpa > old_gpa else ''}{round(new_gpa - old_gpa, 4)}
 
 详细变化:
 """
@@ -204,6 +204,43 @@ def send_email(config: Config, differences: list, old_gpa: float, new_gpa: float
     except Exception as e:
         print(f"发送邮件失败: {e}")
 
+def parse_time_string(time_str: str) -> dt_time:
+    """解析时间字符串为time对象"""
+    try:
+        hour, minute = map(int, time_str.split(':'))
+        return dt_time(hour, minute)
+    except ValueError:
+        raise ValueError(f"时间格式错误: {time_str}，应为 HH:MM 格式")
+
+def is_in_time_range(current_time: dt_time, start_time: dt_time, end_time: dt_time) -> bool:
+    """判断当前时间是否在指定时间范围内"""
+    if start_time <= end_time:
+        # 同一天内的时间范围，如 08:00 - 22:00
+        return start_time <= current_time <= end_time
+    else:
+        # 跨天的时间范围，如 22:00 - 08:00
+        return current_time >= start_time or current_time <= end_time
+
+def get_current_check_interval(config: Config) -> tuple:
+    """获取当前时段的检查间隔和时段名称"""
+    current_time = datetime.now().time()
+    
+    # 获取频繁查询时段配置
+    frequent_start = parse_time_string(config.get('auto.frequent_period.start_time', '08:00'))
+    frequent_end = parse_time_string(config.get('auto.frequent_period.end_time', '22:00'))
+    frequent_interval = config.get('auto.frequent_period.interval', 1800)  # 默认30分钟
+    
+    # 获取冷查询时段配置
+    cold_start = parse_time_string(config.get('auto.cold_period.start_time', '22:00'))
+    cold_end = parse_time_string(config.get('auto.cold_period.end_time', '08:00'))
+    cold_interval = config.get('auto.cold_period.interval', 7200)  # 默认2小时
+    
+    # 判断当前时间属于哪个时段
+    if is_in_time_range(current_time, frequent_start, frequent_end):
+        return frequent_interval, "频繁查询时段"
+    else:
+        return cold_interval, "冷查询时段"
+
 def check_grades():
     """检查成绩更新"""
     try:
@@ -235,7 +272,7 @@ def check_grades():
             credentials['username'], 
             credentials['password']
         )
-        
+        logging.info("认证成功")
         # 访问教务系统
         service_result = neu_login.access_service()
         
@@ -281,16 +318,49 @@ def main():
     setup_logging()
     
     config = Config()
-    check_interval = config.get('auto.check_interval', 3600)  # 默认1小时检查一次
     
-    print(f"成绩自动监控启动，检查间隔: {check_interval}秒")
-    logging.info(f"成绩自动监控启动，检查间隔: {check_interval}秒")
+    print("成绩自动监控启动")
+    logging.info("成绩自动监控启动")
+    
+    # 显示时段配置信息
+    try:
+        frequent_start = config.get('auto.frequent_period.start_time', '08:00')
+        frequent_end = config.get('auto.frequent_period.end_time', '22:00')
+        frequent_interval = config.get('auto.frequent_period.interval', 1800)
+        
+        cold_start = config.get('auto.cold_period.start_time', '22:00')
+        cold_end = config.get('auto.cold_period.end_time', '08:00')
+        cold_interval = config.get('auto.cold_period.interval', 7200)
+        
+        print(f"频繁查询时段: {frequent_start} - {frequent_end}, 间隔: {frequent_interval}秒")
+        print(f"冷查询时段: {cold_start} - {cold_end}, 间隔: {cold_interval}秒")
+        # logging.info(f"频繁查询时段: {frequent_start} - {frequent_end}, 间隔: {frequent_interval}秒")
+        # logging.info(f"冷查询时段: {cold_start} - {cold_end}, 间隔: {cold_interval}秒")
+        
+    except Exception as e:
+        print(f"配置解析错误: {e}")
+        logging.error(f"配置解析错误: {e}")
+        return
     
     while True:
         try:
+            # 获取当前时段的检查间隔
+            current_interval, period_name = get_current_check_interval(config)
+            
+            print(f"当前处于{period_name}，检查间隔: {current_interval}秒")
+            
+            # 执行成绩检查
             check_grades()
-            print(f"下次检查时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            time.sleep(check_interval)
+            
+            # 计算下次检查时间
+            next_check_time = datetime.now()
+            next_check_time = next_check_time.replace(second=0, microsecond=0)
+            next_check_time = next_check_time.replace(minute=next_check_time.minute + current_interval // 60)
+            
+            print(f"下次检查时间: {next_check_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            time.sleep(current_interval)
+            
         except KeyboardInterrupt:
             print("\n程序已停止")
             logging.info("程序已停止")
@@ -302,3 +372,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

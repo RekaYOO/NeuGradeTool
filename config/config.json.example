@@ -19,6 +19,16 @@
         "recipient_email": "recipient@example.com"
     },
     "auto": {
-        "check_interval": 3600
+        "frequent_period": {
+            "start_time": "08:00",
+            "end_time": "22:00",
+            "interval": 1800
+        },
+        "cold_period": {
+            "start_time": "22:00",
+            "end_time": "08:00",
+            "interval": 7200
+        }
     }
 }
+

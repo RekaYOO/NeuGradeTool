@@ -7,12 +7,15 @@ from core.config import Config
 
 def setup_logging():
     """设置日志"""
+    # 确保logs目录存在
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('./logs/App.log', encoding='utf-8'),
-            logging.StreamHandler()
+            logging.FileHandler('logs/App.log', encoding='utf-8'),
         ]
     )
 
